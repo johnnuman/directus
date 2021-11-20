@@ -4,14 +4,26 @@
 			<v-list-item-icon>
 				<v-icon v-if="!disableDrag" class="drag-handle" name="drag_handle" />
 			</v-list-item-icon>
-			<div class="collection-name" @click="openCollection(collection)">
+			<router-link
+				v-if="collection.schema"
+				class="collection-name"
+				:to="`/settings/data-model/${collection.collection}`"
+			>
 				<v-icon
 					:color="collection.meta?.hidden ? 'var(--foreground-subdued)' : collection.color"
 					class="collection-icon"
 					:name="collection.meta?.hidden ? 'visibility_off' : collection.icon"
 				/>
 				<span>{{ collection.name }}</span>
-			</div>
+			</router-link>
+			<button v-else class="collection-name" @click="$emit('editCollection', collection)">
+				<v-icon
+					:color="collection.meta?.hidden ? 'var(--foreground-subdued)' : collection.color"
+					class="collection-icon"
+					:name="collection.meta?.hidden ? 'visibility_off' : collection.icon"
+				/>
+				<span>{{ collection.name }}</span>
+			</button>
 			<template v-if="collection.type === 'alias' || nestedCollections.length">
 				<v-progress-circular v-if="collapseLoading" small indeterminate />
 				<v-icon
@@ -52,7 +64,6 @@
 import { defineComponent, PropType, computed, ref } from 'vue';
 import CollectionOptions from './collection-options.vue';
 import { Collection } from '@/types';
-import { useRouter } from 'vue-router';
 import Draggable from 'vuedraggable';
 import { useCollectionsStore } from '@/stores';
 import { DeepPartial } from '@directus/shared/types';
@@ -79,7 +90,6 @@ export default defineComponent({
 	emits: ['setNestedSort', 'editCollection'],
 	setup(props, { emit }) {
 		const collectionsStore = useCollectionsStore();
-		const router = useRouter();
 		const { t } = useI18n();
 
 		const nestedCollections = computed(() =>
@@ -116,7 +126,6 @@ export default defineComponent({
 
 		return {
 			collapseIcon,
-			openCollection,
 			onGroupSortChange,
 			nestedCollections,
 			update,
@@ -140,7 +149,7 @@ export default defineComponent({
 
 			try {
 				await update({ meta: { collapse: newCollapse } });
-			} catch (err) {
+			} catch (err: any) {
 				unexpectedError(err);
 			} finally {
 				collapseLoading.value = false;
@@ -149,14 +158,6 @@ export default defineComponent({
 
 		async function update(updates: DeepPartial<Collection>) {
 			await collectionsStore.updateCollection(props.collection.collection, updates);
-		}
-
-		function openCollection(collection: Collection) {
-			if (collection.schema) {
-				router.push(`/settings/data-model/${collection.collection}`);
-			} else {
-				emit('editCollection', collection);
-			}
 		}
 
 		function onGroupSortChange(collections: Collection[]) {
